@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Видео-загрузка страниц</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            color: white;
+            font-family: Arial, sans-serif;
+            background: black;
+            -webkit-user-select: none; /* Запрет выделения текста */
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        .video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            z-index: -1;
+        }
+        video, img {
+            width: 120vw;
+            height: 120vh;
+            object-fit: cover;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: opacity 1s ease-in-out, transform 0.3s ease-out;
+            pointer-events: none; /* Запрет взаимодействия с картинкой */
+        }
+        img {
+            display: none; /* Скрываем изображения по умолчанию */
+        }
+        .page-number {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .moon-upload-container {
+            position: fixed;
+            bottom: -25vh; /* Смещаем поле вниз */
+            left: 50%;
+            transform: translateX(-50%);
+            display: none; /* Скрываем по умолчанию */
+            z-index: 10;
+            width: 100vw;
+            height: 100vh;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05); /* Убираем затемнение */
+            cursor: pointer;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden;
+            text-align: center;
+            line-height: 100vh;
+            font-size: 16px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); /* Небольшое свечение по краям */
+        }
+        .moon-upload-container.drag-over {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.5); /* Усиленное свечение при перетаскивании */
+        }
+        .moon-upload-container.uploaded {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .retry-button {
+            display: none;
+            margin: 10px auto;
+            padding: 5px 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Адаптация для мобильных устройств */
+        @media (max-width: 768px) {
+            .moon-upload-container {
+                font-size: 18px; /* Увеличиваем размер текста */
+            }
+
+            .retry-button {
+                font-size: 16px; /* Увеличиваем размер кнопки */
+                padding: 10px 20px;
+            }
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            let currentPage = 0;
+            const videos = [
+                "/static/video1.mp4",
+                "/static/video2.mp4",
+                "/static/video3.mp4",
+                "/static/video4.mp4",
+                "/static/video5.mp4"
+            ];
+
+            const isVideoStopped = new Array(videos.length).fill(false);
+
+            const lastFrames = [
+                "/static/im1.jpg",
+                "/static/im2.jpg",
+                "/static/im3.jpg",
+                "/static/im4.jpg",
+                "/static/im5.jpg"
+            ];
+
+            let touchStartX = 0;
+            let touchEndX = 0;
+
+            function updatePageNumber() {
+                document.getElementById("page-number").textContent = `Страница ${currentPage + 1}`;
+            }
+
+            function changePage(next) {
+                if (next < 0 || next >= videos.length) return;
+                
+                const videoElement = document.getElementById("background-video");
+                const imageElement = document.getElementById("background-image");
+                const moonUploadContainer = document.getElementById("moon-upload-container");
+
+                videoElement.style.opacity = 0;
+                imageElement.style.opacity = 0;
+
+                setTimeout(() => {
+                    if (!isVideoStopped[next]) {
+                        videoElement.src = videos[next];
+                        videoElement.load();
+                        videoElement.play();
+                        videoElement.style.display = "block";
+                        imageElement.style.display = "none";
+                    } else {
+                        videoElement.style.display = "none";
+                        imageElement.src = lastFrames[next];
+                        imageElement.style.display = "block";
+                    }
+
+                    videoElement.style.opacity = 1;
+                    imageElement.style.opacity = 1;
+                    currentPage = next;
+                    updatePageNumber();
+
+                    // Показываем поле загрузки файлов только на второй странице после завершения видео
+                    if (currentPage === 1 && isVideoStopped[currentPage]) {
+                        moonUploadContainer.style.display = "block";
+                    } else {
+                        moonUploadContainer.style.display = "none";
+                    }
+                }, 1000);
+            }
+
+            // Листание страниц колесом мыши
+            document.addEventListener("wheel", function(event) {
+                if (event.deltaY > 0) {
+                    changePage(currentPage + 1);
+                } else {
+                    changePage(currentPage - 1);
+                }
+            });
+
+            // Листание страниц пальцем на мобильных устройствах
+            document.addEventListener("touchstart", function(event) {
+                touchStartX = event.touches[0].clientX;
+            });
+
+            document.addEventListener("touchend", function(event) {
+                touchEndX = event.changedTouches[0].clientX;
+                handleSwipe();
+            });
+
+            function handleSwipe() {
+                const swipeThreshold = 50; // Минимальное расстояние для срабатывания свайпа
+                const deltaX = touchEndX - touchStartX;
+
+                if (deltaX > swipeThreshold) {
+                    changePage(currentPage - 1); // Свайп вправо
+                } else if (deltaX < -swipeThreshold) {
+                    changePage(currentPage + 1); // Свайп влево
+                }
+            }
+
+            const videoElement = document.getElementById("background-video");
+            if (videoElement) {
+                videoElement.addEventListener("ended", function() {
+                    isVideoStopped[currentPage] = true;
+                    this.pause();
+
+                    // Показываем поле загрузки файлов после завершения видео на второй странице
+                    if (currentPage === 1) {
+                        const moonUploadContainer = document.getElementById("moon-upload-container");
+                        moonUploadContainer.style.display = "block";
+                    }
+                });
+            }
+
+            updatePageNumber();
+
+            // Параллакс для области загрузки
+            document.addEventListener("mousemove", function(event) {
+                const video = document.getElementById("background-video");
+                const image = document.getElementById("background-image");
+                const moonUploadContainer = document.getElementById("moon-upload-container");
+
+                const element = video.style.display === "block" ? video : image;
+
+                if (element) {
+                    const mouseX = event.clientX;
+                    const mouseY = event.clientY;
+
+                    const offsetX = (mouseX / window.innerWidth - 0.5) * 50;
+                    const offsetY = (mouseY / window.innerHeight - 0.5) * 50;
+
+                    element.style.transform = `translate(-50%, -50%) translate(${offsetX}px, ${offsetY}px)`;
+
+                    // Привязка области загрузки к параллаксу
+                    moonUploadContainer.style.transform = `translateX(-50%) translate(${offsetX * 0.5}px, ${offsetY * 0.5}px)`;
+                }
+            });
+
+            // Drag and Drop и загрузка файла
+            const moonUploadContainer = document.getElementById("moon-upload-container");
+            const fileInput = document.getElementById("file-upload-input");
+            const retryButton = document.getElementById("retry-button");
+
+            moonUploadContainer.addEventListener("dragover", function(event) {
+                event.preventDefault();
+                moonUploadContainer.classList.add("drag-over");
+            });
+
+            moonUploadContainer.addEventListener("dragleave", function() {
+                moonUploadContainer.classList.remove("drag-over");
+            });
+
+            moonUploadContainer.addEventListener("drop", function(event) {
+                event.preventDefault();
+                moonUploadContainer.classList.remove("drag-over");
+                const file = event.dataTransfer.files[0];
+                handleFileUpload(file);
+            });
+
+            moonUploadContainer.addEventListener("click", function() {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener("change", function() {
+                const file = fileInput.files[0];
+                handleFileUpload(file);
+            });
+
+            retryButton.addEventListener("click", function() {
+                moonUploadContainer.textContent = "Перетащите файл сюда";
+                retryButton.style.display = "none";
+                fileInput.value = "";
+            });
+
+            function handleFileUpload(file) {
+                if (file) {
+                    const formData = new FormData();
+                    formData.append("file", file);
+
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("POST", "/process-file", true);
+
+                    xhr.onload = function() {
+                        if (xhr.status === 200) {
+                            const response = JSON.parse(xhr.responseText);
+                            const hash = response.message.split("Хэш: ")[1];
+                            moonUploadContainer.textContent = hash; // Заменяем текст на хеш
+                            retryButton.style.display = "block"; // Показываем кнопку повторной загрузки
+                        } else {
+                            alert("Ошибка при загрузке файла");
+                        }
+                    };
+
+                    xhr.send(formData);
+                }
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="video-container">
+        <video id="background-video" autoplay muted>
+            <source src="/static/video1.mp4" type="video/mp4">
+        </video>
+        <img id="background-image" src="" alt="Last Frame">
+    </div>
+    <div id="page-number" class="page-number">Страница 1</div>
+    <div id="moon-upload-container" class="moon-upload-container">
+        Перетащите файл сюда
+        <input id="file-upload-input" type="file" class="file-upload-input">
+        <button id="retry-button" class="retry-button">Загрузить снова</button>
+    </div>
+</body>
+</html>
