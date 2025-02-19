@@ -2,304 +2,463 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Видео-загрузка страниц</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows 3D Scroll</title>
     <style>
         body {
+            height: 200vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+            background-color: #111;
+            overflow-x: hidden;
             margin: 0;
-            overflow: hidden;
-            color: white;
             font-family: Arial, sans-serif;
-            background: black;
-            -webkit-user-select: none; /* Запрет выделения текста */
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
         }
-        .video-container {
+        .container {
+            width: 90vw; /* Увеличиваем ширину для мобильных устройств */
+            height: 80vh;
+            transform-origin: center;
+            transform: rotateX(90deg);
+            transition: transform 0.2s ease-out;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            z-index: -1;
-        }
-        video, img {
-            width: 120vw;
-            height: 120vh;
-            object-fit: cover;
-            position: absolute;
-            top: 50%;
+            top: 75%;
             left: 50%;
-            transform: translate(-50%, -50%);
-            transition: opacity 1s ease-in-out, transform 0.3s ease-out;
-            pointer-events: none; /* Запрет взаимодействия с картинкой */
-        }
-        img {
-            display: none; /* Скрываем изображения по умолчанию */
-        }
-        .page-number {
-            position: fixed;
-            top: 20px;
-            right: 20px;
+            transform-style: preserve-3d;
+            background: linear-gradient(135deg, #3498db, #9b59b6);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
             font-size: 24px;
+            color: white;
+            text-align: center;
+            transform: translate(-50%, -50%) rotateX(90deg);
+        }
+        .window-header {
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .window-title {
+            font-size: 18px;
             font-weight: bold;
         }
-        .moon-upload-container {
-            position: fixed;
-            bottom: -25vh; /* Смещаем поле вниз */
-            left: 50%;
-            transform: translateX(-50%);
-            display: none; /* Скрываем по умолчанию */
-            z-index: 10;
-            width: 100vw;
-            height: 100vh;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.05); /* Убираем затемнение */
-            cursor: pointer;
-            transition: background 0.3s ease, box-shadow 0.3s ease;
-            overflow: hidden;
-            text-align: center;
-            line-height: 100vh;
-            font-size: 16px;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); /* Небольшое свечение по краям */
+        .window-controls {
+            display: flex;
+            gap: 10px;
         }
-        .moon-upload-container.drag-over {
-            background: rgba(255, 255, 255, 0.1);
-            box-shadow: 0 0 30px rgba(255, 255, 255, 0.5); /* Усиленное свечение при перетаскивании */
-        }
-        .moon-upload-container.uploaded {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        .retry-button {
-            display: none;
-            margin: 10px auto;
-            padding: 5px 10px;
-            background-color: rgba(255, 255, 255, 0.8);
+        .window-controls button {
+            background: none;
             border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            flex-wrap: wrap; /* Разрешаем перенос вкладок на мобильных устройствах */
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: rgba(0, 0, 0, 0.3);
             border-radius: 5px;
             cursor: pointer;
+            font-size: 14px; /* Уменьшаем размер шрифта для мобильных устройств */
         }
-
-        /* Адаптация для мобильных устройств */
+        .tab.active {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .content {
+            flex: 1;
+            width: 100%;
+            padding: 20px;
+            display: none;
+            overflow-y: auto; /* Добавляем прокрутку для мобильных устройств */
+        }
+        .content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: white;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            outline: none;
+        }
+        .form-group input:focus {
+            border-color: #3498db;
+        }
+        .form-group button {
+            padding: 12px 24px;
+            background-color: #3498db;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .form-group button:hover {
+            background-color: #2980b9;
+        }
+        .download-link {
+            margin-top: 15px;
+            color: #3498db;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #ff4444;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: none;
+            z-index: 1000;
+        }
+        .file-input {
+            margin-bottom: 15px;
+        }
+        .file-input input[type="file"] {
+            display: none;
+        }
+        .file-input label {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #3498db;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .file-input label:hover {
+            background-color: #2980b9;
+        }
+        .ssh-generator {
+            margin-top: 20px;
+        }
+        .ssh-generator canvas {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.1);
+            width: 100%; /* Делаем canvas адаптивным */
+            height: auto;
+        }
+        .ssh-generator button {
+            margin-top: 10px;
+        }
         @media (max-width: 768px) {
-            .moon-upload-container {
-                font-size: 18px; /* Увеличиваем размер текста */
+            .container {
+                width: 95vw; /* Увеличиваем ширину для мобильных устройств */
+                height: 90vh; /* Увеличиваем высоту для мобильных устройств */
             }
-
-            .retry-button {
-                font-size: 16px; /* Увеличиваем размер кнопки */
-                padding: 10px 20px;
+            .tabs {
+                flex-direction: column; /* Вкладки в столбик на мобильных устройствах */
+            }
+            .tab {
+                width: 100%; /* Вкладки занимают всю ширину */
+            }
+            .content {
+                padding: 10px; /* Уменьшаем отступы для мобильных устройств */
+            }
+            .form-group input, .form-group button {
+                width: 100%; /* Элементы формы занимают всю ширину */
             }
         }
     </style>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            let currentPage = 0;
-            const videos = [
-                "/static/video1.mp4",
-                "/static/video2.mp4",
-                "/static/video3.mp4",
-                "/static/video4.mp4",
-                "/static/video5.mp4"
-            ];
-
-            const isVideoStopped = new Array(videos.length).fill(false);
-
-            const lastFrames = [
-                "/static/im1.jpg",
-                "/static/im2.jpg",
-                "/static/im3.jpg",
-                "/static/im4.jpg",
-                "/static/im5.jpg"
-            ];
-
-            let touchStartX = 0;
-            let touchEndX = 0;
-
-            function updatePageNumber() {
-                document.getElementById("page-number").textContent = `Страница ${currentPage + 1}`;
-            }
-
-            function changePage(next) {
-                if (next < 0 || next >= videos.length) return;
-                
-                const videoElement = document.getElementById("background-video");
-                const imageElement = document.getElementById("background-image");
-                const moonUploadContainer = document.getElementById("moon-upload-container");
-
-                videoElement.style.opacity = 0;
-                imageElement.style.opacity = 0;
-
-                setTimeout(() => {
-                    if (!isVideoStopped[next]) {
-                        videoElement.src = videos[next];
-                        videoElement.load();
-                        videoElement.play();
-                        videoElement.style.display = "block";
-                        imageElement.style.display = "none";
-                    } else {
-                        videoElement.style.display = "none";
-                        imageElement.src = lastFrames[next];
-                        imageElement.style.display = "block";
-                    }
-
-                    videoElement.style.opacity = 1;
-                    imageElement.style.opacity = 1;
-                    currentPage = next;
-                    updatePageNumber();
-
-                    // Показываем поле загрузки файлов только на второй странице после завершения видео
-                    if (currentPage === 1 && isVideoStopped[currentPage]) {
-                        moonUploadContainer.style.display = "block";
-                    } else {
-                        moonUploadContainer.style.display = "none";
-                    }
-                }, 1000);
-            }
-
-            // Листание страниц колесом мыши
-            document.addEventListener("wheel", function(event) {
-                if (event.deltaY > 0) {
-                    changePage(currentPage + 1);
-                } else {
-                    changePage(currentPage - 1);
-                }
-            });
-
-            // Листание страниц пальцем на мобильных устройствах
-            document.addEventListener("touchstart", function(event) {
-                touchStartX = event.touches[0].clientX;
-            });
-
-            document.addEventListener("touchend", function(event) {
-                touchEndX = event.changedTouches[0].clientX;
-                handleSwipe();
-            });
-
-            function handleSwipe() {
-                const swipeThreshold = 50; // Минимальное расстояние для срабатывания свайпа
-                const deltaX = touchEndX - touchStartX;
-
-                if (deltaX > swipeThreshold) {
-                    changePage(currentPage - 1); // Свайп вправо
-                } else if (deltaX < -swipeThreshold) {
-                    changePage(currentPage + 1); // Свайп влево
-                }
-            }
-
-            const videoElement = document.getElementById("background-video");
-            if (videoElement) {
-                videoElement.addEventListener("ended", function() {
-                    isVideoStopped[currentPage] = true;
-                    this.pause();
-
-                    // Показываем поле загрузки файлов после завершения видео на второй странице
-                    if (currentPage === 1) {
-                        const moonUploadContainer = document.getElementById("moon-upload-container");
-                        moonUploadContainer.style.display = "block";
-                    }
-                });
-            }
-
-            updatePageNumber();
-
-            // Параллакс для области загрузки
-            document.addEventListener("mousemove", function(event) {
-                const video = document.getElementById("background-video");
-                const image = document.getElementById("background-image");
-                const moonUploadContainer = document.getElementById("moon-upload-container");
-
-                const element = video.style.display === "block" ? video : image;
-
-                if (element) {
-                    const mouseX = event.clientX;
-                    const mouseY = event.clientY;
-
-                    const offsetX = (mouseX / window.innerWidth - 0.5) * 50;
-                    const offsetY = (mouseY / window.innerHeight - 0.5) * 50;
-
-                    element.style.transform = `translate(-50%, -50%) translate(${offsetX}px, ${offsetY}px)`;
-
-                    // Привязка области загрузки к параллаксу
-                    moonUploadContainer.style.transform = `translateX(-50%) translate(${offsetX * 0.5}px, ${offsetY * 0.5}px)`;
-                }
-            });
-
-            // Drag and Drop и загрузка файла
-            const moonUploadContainer = document.getElementById("moon-upload-container");
-            const fileInput = document.getElementById("file-upload-input");
-            const retryButton = document.getElementById("retry-button");
-
-            moonUploadContainer.addEventListener("dragover", function(event) {
-                event.preventDefault();
-                moonUploadContainer.classList.add("drag-over");
-            });
-
-            moonUploadContainer.addEventListener("dragleave", function() {
-                moonUploadContainer.classList.remove("drag-over");
-            });
-
-            moonUploadContainer.addEventListener("drop", function(event) {
-                event.preventDefault();
-                moonUploadContainer.classList.remove("drag-over");
-                const file = event.dataTransfer.files[0];
-                handleFileUpload(file);
-            });
-
-            moonUploadContainer.addEventListener("click", function() {
-                fileInput.click();
-            });
-
-            fileInput.addEventListener("change", function() {
-                const file = fileInput.files[0];
-                handleFileUpload(file);
-            });
-
-            retryButton.addEventListener("click", function() {
-                moonUploadContainer.textContent = "Перетащите файл сюда";
-                retryButton.style.display = "none";
-                fileInput.value = "";
-            });
-
-            function handleFileUpload(file) {
-                if (file) {
-                    const formData = new FormData();
-                    formData.append("file", file);
-
-                    const xhr = new XMLHttpRequest();
-                    xhr.open("POST", "/process-file", true);
-
-                    xhr.onload = function() {
-                        if (xhr.status === 200) {
-                            const response = JSON.parse(xhr.responseText);
-                            const hash = response.message.split("Хэш: ")[1];
-                            moonUploadContainer.textContent = hash; // Заменяем текст на хеш
-                            retryButton.style.display = "block"; // Показываем кнопку повторной загрузки
-                        } else {
-                            alert("Ошибка при загрузке файла");
-                        }
-                    };
-
-                    xhr.send(formData);
-                }
-            }
-        });
-    </script>
 </head>
 <body>
-    <div class="video-container">
-        <video id="background-video" autoplay muted>
-            <source src="/static/video1.mp4" type="video/mp4">
-        </video>
-        <img id="background-image" src="" alt="Last Frame">
+    <div class="container">
+        <div class="window-header">
+            <div class="window-title">Windows</div>
+            <div class="window-controls">
+                <button>—</button>
+                <button>□</button>
+                <button>✕</button>
+            </div>
+        </div>
+        <div class="tabs">
+            <div class="tab active" data-tab="hash">Хэш файла</div>
+            <div class="tab" data-tab="encrypt">Шифрование</div>
+            <div class="tab" data-tab="decrypt">Расшифровка</div>
+            <div class="tab" data-tab="ssh">Генерация SSH</div>
+        </div>
+        <div class="content active" id="hash">
+            <div class="form-group">
+                <label for="hash-file">Выберите файл для вычисления хэша:</label>
+                <div class="file-input">
+                    <label for="hash-file">Выбрать файл</label>
+                    <input type="file" id="hash-file" autocomplete="off">
+                </div>
+                <button onclick="calculateHash()">Вычислить хэш</button>
+            </div>
+            <div id="hash-result"></div>
+            <div id="hash-download" class="download-link" style="display: none;" onclick="downloadHash()">Скачать хэш</div>
+        </div>
+        <div class="content" id="encrypt">
+            <div class="form-group">
+                <label for="encrypt-file">Выберите файл для шифрования:</label>
+                <div class="file-input">
+                    <label for="encrypt-file">Выбрать файл</label>
+                    <input type="file" id="encrypt-file" autocomplete="off">
+                </div>
+                <label for="encrypt-key">Введите ключ:</label>
+                <input type="text" id="encrypt-key" autocomplete="off">
+                <button onclick="encryptFile()">Зашифровать</button>
+            </div>
+            <div id="encrypt-result"></div>
+            <div id="encrypt-download" class="download-link" style="display: none;" onclick="downloadEncryptedFile()">Скачать зашифрованный файл</div>
+        </div>
+        <div class="content" id="decrypt">
+            <div class="form-group">
+                <label for="decrypt-file">Выберите файл для расшифровки:</label>
+                <div class="file-input">
+                    <label for="decrypt-file">Выбрать файл</label>
+                    <input type="file" id="decrypt-file" autocomplete="off">
+                </div>
+                <label for="decrypt-key">Введите ключ:</label>
+                <input type="text" id="decrypt-key" autocomplete="off">
+                <button onclick="decryptFile()">Расшифровать</button>
+            </div>
+            <div id="decrypt-result"></div>
+            <div id="decrypt-download" class="download-link" style="display: none;" onclick="downloadDecryptedFile()">Скачать расшифрованный файл</div>
+        </div>
+        <div class="content" id="ssh">
+            <div class="form-group ssh-generator">
+                <label>Генерация OpenSSH ключа:</label>
+                <canvas id="ssh-canvas" width="400" height="200"></canvas>
+                <button onclick="generateSshKey()">Сгенерировать ключ</button>
+                <div id="ssh-result"></div>
+            </div>
+        </div>
     </div>
-    <div id="page-number" class="page-number">Страница 1</div>
-    <div id="moon-upload-container" class="moon-upload-container">
-        Перетащите файл сюда
-        <input id="file-upload-input" type="file" class="file-upload-input">
-        <button id="retry-button" class="retry-button">Загрузить снова</button>
-    </div>
+
+    <!-- Уведомления и ошибки -->
+    <div id="notification" class="notification"></div>
+
+    <script>
+        window.addEventListener("scroll", () => {
+            let scrollTop = window.scrollY;
+            let windowHeight = window.innerHeight;
+            let maxScroll = windowHeight * 0.8;
+            let rotation = Math.max(0, 90 - (scrollTop / maxScroll) * 90);
+            document.querySelector(".container").style.transform = `translate(-50%, -50%) rotateX(${rotation}deg)`;
+        });
+
+        const tabs = document.querySelectorAll('.tab');
+        const contents = document.querySelectorAll('.content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                contents.forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Функция для отображения уведомлений
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.innerText = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 5000);
+        }
+
+        async function calculateHash() {
+            const fileInput = document.getElementById('hash-file');
+            if (fileInput.files.length === 0) {
+                showNotification('Пожалуйста, выберите файл.');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            const response = await fetch('/hash-file', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const hashResult = document.getElementById('hash-result');
+                const hashDownload = document.getElementById('hash-download');
+                const hash = await response.text();
+                hashResult.innerText = `Хэш файла ${fileInput.files[0].name.substring(0, 100)}:\n${hash}`;
+                hashDownload.style.display = 'block';
+            } else {
+                const result = await response.json();
+                showNotification(`Ошибка: ${result.message}`);
+            }
+        }
+
+        async function downloadHash() {
+            const fileInput = document.getElementById('hash-file');
+            if (fileInput.files.length === 0) {
+                showNotification('Пожалуйста, выберите файл.');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            const response = await fetch('/hash-file', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${fileInput.files[0].name.substring(0, 100)}_hash.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                const result = await response.json();
+                showNotification(`Ошибка: ${result.message}`);
+            }
+        }
+
+        async function encryptFile() {
+            const fileInput = document.getElementById('encrypt-file');
+            const keyInput = document.getElementById('encrypt-key');
+            if (fileInput.files.length === 0 || keyInput.value === '') {
+                showNotification('Пожалуйста, выберите файл и введите ключ.');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('key', keyInput.value);
+            const response = await fetch('/encrypt-file', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${fileInput.files[0].name}.enc`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                const result = await response.json();
+                showNotification(`Ошибка: ${result.message}`);
+            }
+        }
+
+        async function decryptFile() {
+            const fileInput = document.getElementById('decrypt-file');
+            const keyInput = document.getElementById('decrypt-key');
+            if (fileInput.files.length === 0 || keyInput.value === '') {
+                showNotification('Пожалуйста, выберите файл и введите ключ.');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('key', keyInput.value);
+            const response = await fetch('/decrypt-file', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileInput.files[0].name.replace(".enc", "");
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                const result = await response.json();
+                showNotification(`Ошибка: ${result.message}`);
+            }
+        }
+
+        // Генерация SSH ключа
+        let randomData = '';
+        const canvas = document.getElementById('ssh-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Обработка движения мыши
+        canvas.addEventListener('mousemove', (e) => {
+            randomData += `${e.offsetX},${e.offsetY};`;
+        });
+
+        // Обработка касаний на смартфонах
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // Предотвращаем стандартное поведение
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            randomData += `${x},${y};`;
+        });
+
+        async function generateSshKey() {
+            if (randomData.length === 0) {
+                showNotification('Пожалуйста, перемещайте курсор или касайтесь экрана для генерации случайных данных.');
+                return;
+            }
+
+            const response = await fetch('/generate-ssh-key', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ random_data: randomData }),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                const sshResult = document.getElementById('ssh-result');
+                sshResult.innerHTML = `
+                    <p><strong>Приватный ключ:</strong></p>
+                    <textarea readonly>${result.private_key}</textarea>
+                    <p><strong>Публичный ключ:</strong></p>
+                    <textarea readonly>${result.public_key}</textarea>
+                `;
+            } else {
+                const result = await response.json();
+                showNotification(`Ошибка: ${result.message}`);
+            }
+        }
+    </script>
 </body>
 </html>
