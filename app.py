@@ -14,6 +14,8 @@ app = Flask(__name__)
 CORS(app)
 
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True) 
 
 # Функция вычисления SHA-256 хэша файла
 def calculate_file_hash(filepath):
