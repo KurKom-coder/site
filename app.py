@@ -164,21 +164,6 @@ def generate_ssh_key_endpoint():
 
     return jsonify({"private_key": private_key, "public_key": public_key})
 
-def cleanup_files():
-    while True:
-        now = time.time()
-        for filename in os.listdir(UPLOAD_FOLDER):
-            file_path = os.path.join(UPLOAD_FOLDER, filename)
-            if os.path.isfile(file_path):
-                file_age = now - os.path.getmtime(file_path)
-                if file_age > 600:  # 600 секунд = 10 минут
-                    os.remove(file_path)
-                    print(f"[AUTO-DELETE] Файл {filename} удалён")
-        time.sleep(600)  # Проверять каждые 10 минут
-
-# Запуск автоудаления в фоновом потоке
-threading.Thread(target=cleanup_files, daemon=True).start()
-
 if __name__ == '__main__':
     os.makedirs("uploads", exist_ok=True)
     app.run(host='0.0.0.0', port=5000, debug=True)
