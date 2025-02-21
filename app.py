@@ -6,6 +6,7 @@ from flask_cors import CORS
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 import paramiko  # Для создания OpenSSH ключей
+from io import StringIO
 
 app = Flask(__name__)
 CORS(app)
@@ -54,13 +55,25 @@ def decrypt_file(filepath, key):
 # Функция создания OpenSSH ключа
 def generate_ssh_key(random_data):
     try:
-        # Используем случайные данные для генерации ключа
-        key = paramiko.RSAKey.generate(2048, random_data.encode())
-        private_key = key.export_key("PEM")
+        print(f"[DEBUG] Полученные случайные данные: {random_data[:100]}...")  # Ограничиваем вывод
+
+        key = paramiko.RSAKey.generate(2048)
+        print("[DEBUG] Ключ успешно сгенерирован")
+
+        # Сохраняем приватный ключ в строку
+        private_key_buffer = StringIO()
+        key.write_private_key(private_key_buffer)
+        private_key = private_key_buffer.getvalue()
+
+        # Генерируем публичный ключ
         public_key = f"{key.get_name()} {key.get_base64()} generated-key"
+        print("[DEBUG] Приватный и публичный ключи успешно созданы")
+
         return private_key, public_key
     except Exception as e:
-        return f"Ошибка генерации ключа: {str(e)}"
+        error_message = f"Ошибка генерации ключа: {str(e)}"
+        print(f"[ERROR] {error_message}")
+        return None, error_message
 
 @app.route('/')
 def home():
@@ -134,11 +147,35 @@ def decrypt_endpoint():
 @app.route('/generate-ssh-key', methods=['POST'])
 def generate_ssh_key_endpoint():
     data = request.get_json()
+    print(f"[DEBUG] Получен запрос: {data}")
+
     if 'random_data' not in data:
+        print("[ERROR] Отсутствуют случайные данные")
         return jsonify({"message": "Необходимы случайные данные!"}), 400
+
     random_data = data['random_data']
     private_key, public_key = generate_ssh_key(random_data)
-    return jsonify({"private_key": private_key.decode(), "public_key": public_key})
+
+    if private_key is None:
+        print("[ERROR] Ошибка при генерации ключа")
+        return jsonify({"message": public_key}), 500
+
+    return jsonify({"private_key": private_key, "public_key": public_key})
+
+def cleanup_files():
+    while True:
+        now = time.time()
+        for filename in os.listdir(UPLOAD_FOLDER):
+            file_path = os.path.join(UPLOAD_FOLDER, filename)
+            if os.path.isfile(file_path):
+                file_age = now - os.path.getmtime(file_path)
+                if file_age > 600:  # 600 секунд = 10 минут
+                    os.remove(file_path)
+                    print(f"[AUTO-DELETE] Файл {filename} удалён")
+        time.sleep(600)  # Проверять каждые 10 минут
+
+# Запуск автоудаления в фоновом потоке
+threading.Thread(target=cleanup_files, daemon=True).start()
 
 if __name__ == '__main__':
     os.makedirs("uploads", exist_ok=True)
