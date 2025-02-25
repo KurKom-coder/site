@@ -57,27 +57,27 @@ def decrypt_file(filepath, key):
         return f"Ошибка расшифровки: {str(e)}"
 
 # Функция создания OpenSSH ключа
-def generate_ssh_key(random_data):
+
+def generate_ssh_key():
     try:
-        print(f"[DEBUG] Полученные случайные данные: {random_data[:100]}...")  # Ограничиваем вывод
-
+        print("[DEBUG] Начало генерации ключа")
         key = paramiko.RSAKey.generate(2048)
-        print("[DEBUG] Ключ успешно сгенерирован")
 
-        # Сохраняем приватный ключ в строку
+        # Генерация приватного ключа в формате PPK
         private_key_buffer = StringIO()
         key.write_private_key(private_key_buffer)
         private_key = private_key_buffer.getvalue()
+        print("[DEBUG] Приватный ключ (PPK) сгенерирован")
 
-        # Генерируем публичный ключ
+        # Создаём публичный ключ
         public_key = f"{key.get_name()} {key.get_base64()} generated-key"
-        print("[DEBUG] Приватный и публичный ключи успешно созданы")
+        print("[DEBUG] Публичный ключ сгенерирован")
 
         return private_key, public_key
+
     except Exception as e:
-        error_message = f"Ошибка генерации ключа: {str(e)}"
-        print(f"[ERROR] {error_message}")
-        return None, error_message
+        print(f"[ERROR] Ошибка при генерации ключа: {str(e)}")
+        return None, None
 
 @app.route('/')
 def home():
@@ -150,21 +150,38 @@ def decrypt_endpoint():
 
 @app.route('/generate-ssh-key', methods=['POST'])
 def generate_ssh_key_endpoint():
-    data = request.get_json()
-    print(f"[DEBUG] Получен запрос: {data}")
+    try:
+        private_key, public_key = generate_ssh_key()
 
-    if 'random_data' not in data:
-        print("[ERROR] Отсутствуют случайные данные")
-        return jsonify({"message": "Необходимы случайные данные!"}), 400
+        if private_key is None:
+            print("[ERROR] Ошибка генерации ключа")
+            return jsonify({"message": "Ошибка генерации ключа"}), 500
 
-    random_data = data['random_data']
-    private_key, public_key = generate_ssh_key(random_data)
+        print("[DEBUG] Ключи успешно сгенерированы")
 
-    if private_key is None:
-        print("[ERROR] Ошибка при генерации ключа")
-        return jsonify({"message": public_key}), 500
+        return jsonify({
+            "private_key": private_key,
+            "public_key": public_key
+        })
 
-    return jsonify({"private_key": private_key, "public_key": public_key})
+    except Exception as e:
+        print(f"[ERROR] Ошибка сервера: {str(e)}")
+        return jsonify({"message": f"Ошибка сервера: {str(e)}"}), 500
+
+def cleanup_files():
+    while True:
+        now = time.time()
+        for filename in os.listdir(UPLOAD_FOLDER):
+            file_path = os.path.join(UPLOAD_FOLDER, filename)
+            if os.path.isfile(file_path):
+                file_age = now - os.path.getmtime(file_path)
+                if file_age > 600:  # 600 секунд = 10 минут
+                    os.remove(file_path)
+                    print(f"[AUTO-DELETE] Файл {filename} удалён")
+        time.sleep(600)  # Проверять каждые 10 минут
+
+# Запуск автоудаления в фоновом потоке
+threading.Thread(target=cleanup_files, daemon=True).start()
 
 if __name__ == '__main__':
     os.makedirs("uploads", exist_ok=True)
